@@ -8,11 +8,20 @@ export async function GET(req: NextRequest) {
     const coll = db.collection('raw_clickstream_events');
 
     const platform = req.nextUrl.searchParams.get('platform');
-    const limit = parseInt(req.nextUrl.searchParams.get('limit') || '25', 10);
+    const eventType = req.nextUrl.searchParams.get('eventType');
+    const status = req.nextUrl.searchParams.get('status');
+    const limit = parseInt(req.nextUrl.searchParams.get('limit') || '50', 10);
 
     const filter: Record<string, any> = {};
     if (platform && platform !== 'ALL') {
       filter.platform = platform;
+    }
+    if (eventType && eventType !== 'ALL') {
+      filter.event_type = eventType;
+    }
+    if (status && status !== 'ALL') {
+      if (status === 'processed') filter.processed = true;
+      if (status === 'pending') filter.processed = { $ne: true };
     }
 
     const events = await coll
