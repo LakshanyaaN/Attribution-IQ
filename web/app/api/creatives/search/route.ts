@@ -11,7 +11,14 @@ export async function GET(req: NextRequest) {
       WITH query_ref AS (
         SELECT embedding 
         FROM dim_creative 
-        WHERE headline ILIKE '%' || $1 || '%' OR body_text ILIKE '%' || $1 || '%'
+        WHERE embedding IS NOT NULL 
+          AND (headline ILIKE '%' || $1 || '%' OR body_text ILIKE '%' || $1 || '%')
+        LIMIT 1
+      ),
+      fallback_ref AS (
+        SELECT embedding 
+        FROM dim_creative 
+        WHERE embedding IS NOT NULL 
         LIMIT 1
       )
       SELECT 
@@ -21,15 +28,17 @@ export async function GET(req: NextRequest) {
         c.call_to_action,
         camp.name AS campaign_name,
         camp.channel,
-        ROUND((1 - (c.embedding <=> COALESCE(qref.embedding, c.embedding)))::numeric, 4) AS similarity_score
+        ROUND((1 - (c.embedding <=> COALESCE(qref.embedding, fref.embedding, c.embedding)))::numeric, 4) AS similarity_score
       FROM dim_creative c
       JOIN dim_campaign camp ON c.campaign_id = camp.campaign_id
       LEFT JOIN query_ref qref ON TRUE
+      LEFT JOIN fallback_ref fref ON TRUE
+      WHERE c.embedding IS NOT NULL
     `;
 
     const params: any[] = [q];
     if (channel && channel !== 'ALL') {
-      sql += ` WHERE camp.channel = $2 `;
+      sql += ` AND camp.channel = $2 `;
       params.push(channel);
     }
 
