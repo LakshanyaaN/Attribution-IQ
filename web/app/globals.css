@@ -1,14 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #0f172a;
-  --foreground: #f8fafc;
+  --canvas-bg: #F5EFEB;
+  --canvas-pattern: #EAE3DC;
+  --card-bg: #FFFFFF;
+  --card-border: #EADBCE;
+  --ink-primary: #181E24;
+  --ink-muted: #64748B;
+  --emerald-accent: #0D5C3A;
+  --emerald-light: #E8F5EE;
+  --warm-gold: #E89E28;
+  --retro-red: #D9483B;
+  --retro-blue: #2B6CB0;
+  --sidebar-bg: #141A21;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--canvas-bg);
+  color: var(--ink-primary);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  background-image: 
+    radial-gradient(#DECFC2 0.75px, transparent 0.75px), 
+    radial-gradient(#DECFC2 0.75px, #F5EFEB 0.75px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+}
+
+.font-editorial {
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.font-handwriting {
+  font-family: 'Caveat', cursive;
+}
+
+/* Paper Card Shadows & Borders */
+.paper-card {
+  background-color: #FFFFFF;
+  border: 1px solid #EBE2D8;
+  box-shadow: 0 4px 16px -2px rgba(44, 33, 20, 0.05), 0 2px 6px -1px rgba(44, 33, 20, 0.03);
+  border-radius: 16px;
+}
+
+.paper-card-highlight {
+  background-color: #FFFFFF;
+  border: 1.5px solid #DFCFC0;
+  box-shadow: 0 10px 25px -4px rgba(44, 33, 20, 0.08);
+  border-radius: 18px;
+}
+
+/* Retro Stamp Badges */
+.stamp-red {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background-color: #FDF2F1;
+  color: #C53030;
+  border: 1.5px dashed #FEB2B2;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+}
+
+.stamp-green {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background-color: #E6F4EA;
+  color: #0D5C3A;
+  border: 1.5px dashed #A3D9B1;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+}
+
+/* Custom Tape Effect */
+.tape-top {
+  position: relative;
+}
+.tape-top::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  width: 90px;
+  height: 24px;
+  background: rgba(246, 224, 160, 0.65);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-left: 2px dashed rgba(200, 180, 120, 0.4);
+  border-right: 2px dashed rgba(200, 180, 120, 0.4);
+  z-index: 10;
 }
