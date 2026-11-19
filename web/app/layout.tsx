@@ -1,9 +1,9 @@
 import './globals.css';
-import Navigation, { RoleProvider } from '@/components/Navigation';
+import AppShell from '@/components/AppShell';
 
 export const metadata = {
-  title: 'Omnichannel Attribution Engine',
-  description: 'Multi-Touch Marketing Attribution Analytics Warehouse',
+  title: 'AttributionIQ - Omnichannel Intelligence Engine',
+  description: 'Enterprise Multi-Touch Attribution & Marketing Database Analytics',
 };
 
 export default function RootLayout({
@@ -12,14 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <RoleProvider>
-          <Navigation />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {children}
-          </main>
-        </RoleProvider>
+    <html lang="en">
+      <body className="antialiased selection:bg-[#E8F5EE] selection:text-[#0D5C3A]">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
