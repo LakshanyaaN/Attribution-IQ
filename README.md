@@ -15,6 +15,7 @@
 | N LAKSHANYAA | PES1UG24AM169 |
 | KSHAMA | PES1UG24AM142 |
 
+---
 
 An enterprise-grade analytical data warehouse, multi-touch algorithmic attribution engine, and full-stack marketing intelligence web application. Engineered to ingest high-velocity multi-platform clickstreams, reconstruct complex multi-touch customer journeys, and reallocate conversion revenue accurately using advanced analytical SQL and dense vector semantic search.
 
