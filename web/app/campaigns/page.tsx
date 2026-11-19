@@ -1,291 +1,302 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRole } from '@/components/Navigation';
-import { ShieldCheck, Plus, CheckCircle, AlertOctagon, RefreshCw, DollarSign } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useRole } from '@/components/AppShell';
+import { 
+  ShieldCheck, 
+  ShieldAlert, 
+  Plus, 
+  Lock, 
+  CheckCircle2, 
+  AlertCircle,
+  Database,
+  ArrowRight,
+  Filter,
+  Search
+} from 'lucide-react';
 
 interface Campaign {
   campaign_id: string;
   name: string;
   channel: string;
   is_active: boolean;
-  cpc_bid?: number;
-  target_network?: string;
-  daily_budget?: number;
+  cpc_bid: string | null;
+  target_network: string | null;
+  daily_budget: string | null;
 }
 
 export default function CampaignsPage() {
   const { role } = useRole();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filter States for the Ledger Table
+  const [channelFilter, setChannelFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Form states
-  const [name, setName] = useState('');
-  const [channel, setChannel] = useState('Meta');
-  const [dailyBudget, setDailyBudget] = useState('750.00');
-  const [cpcBid, setCpcBid] = useState('1.85');
-  const [targetNetwork, setTargetNetwork] = useState('Instagram Feed');
-
-  // RBAC feedback state
-  const [responseMsg, setResponseMsg] = useState<{
-    type: 'success' | 'error';
-    title: string;
+  // Form States for creating a campaign
+  const [newCampaignName, setNewCampaignName] = useState('');
+  const [newChannel, setNewChannel] = useState('Meta');
+  const [actionStatus, setActionStatus] = useState<{
+    type: 'success' | 'error' | null;
     message: string;
-  } | null>(null);
+    detail?: string;
+  }>({ type: null, message: '' });
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = () => {
     setLoading(true);
-    try {
-      const res = await fetch(`/api/campaigns?role=${role}`);
-      const json = await res.json();
-      if (json.success) {
-        setCampaigns(json.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    fetch(`/api/campaigns?role=${role}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setCampaigns(json.data || []);
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchCampaigns();
   }, [role]);
 
-  // Form submit: attempts write operation using current database role
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
-    setResponseMsg(null);
+    setActionStatus({ type: null, message: '' });
 
     try {
       const res = await fetch(`/api/campaigns?role=${role}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          channel,
-          daily_budget: parseFloat(dailyBudget),
-          cpc_bid: parseFloat(cpcBid),
-          target_network: targetNetwork,
+          name: newCampaignName || 'Omnichannel Test Campaign',
+          channel: newChannel,
         }),
       });
 
       const json = await res.json();
 
       if (json.success) {
-        setResponseMsg({
+        setActionStatus({
           type: 'success',
-          title: `Operation Approved by Database (Role: app_${role})`,
-          message: json.message,
+          message: `Campaign Created Successfully!`,
+          detail: `PostgreSQL Role '${role}' has INSERT privilege on dim_campaign. ID: ${json.campaign_id}`,
         });
-        setName('');
+        setNewCampaignName('');
         fetchCampaigns();
       } else {
-        setResponseMsg({
+        setActionStatus({
           type: 'error',
-          title: json.isPermissionDenied
-            ? `PostgreSQL Rejected Request (SQLSTATE 42501)`
-            : `Error Executing Operation`,
-          message: json.detail || json.error,
+          message: `PostgreSQL Access Denied: 42501 (insufficient_privilege)`,
+          detail: json.detail || json.error,
         });
       }
     } catch (err: any) {
-      setResponseMsg({
+      setActionStatus({
         type: 'error',
-        title: 'Network Error',
-        message: err.message,
+        message: 'Request Failed',
+        detail: err.message,
       });
     }
   };
 
+  // Filtered campaigns according to Channel Filter and Search Query
+  const filteredCampaigns = campaigns.filter((c) => {
+    const matchesChannel = channelFilter === 'ALL' || c.channel.toLowerCase() === channelFilter.toLowerCase();
+    const matchesSearch = searchQuery === '' || 
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.channel.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesChannel && matchesSearch;
+  });
+
   return (
     <div className="space-y-8">
-      {/* RBAC Header */}
-      <div className="border-b border-slate-800 pb-5">
-        <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-2">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Rubric Item 12: Database-Enforced RBAC</span>
-        </div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">
-          Campaign Administration & Role-Based Access Control
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Permissions are enforced in the <strong>PostgreSQL engine</strong> itself. The <code className="text-indigo-300 font-mono">app_analyst</code> role has <code className="text-amber-400 font-mono">SELECT</code> permissions only; write operations are strictly reserved for <code className="text-indigo-300 font-mono">app_manager</code>.
-        </p>
-      </div>
-
-      {/* Role Demonstration Alert */}
-      <div className={`p-4 rounded-xl border flex items-start space-x-3 text-xs ${
-        role === 'analyst' 
-          ? 'bg-amber-950/20 border-amber-800/40 text-amber-200' 
-          : 'bg-emerald-950/20 border-emerald-800/40 text-emerald-200'
-      }`}>
-        <div className="mt-0.5">
-          {role === 'analyst' ? <AlertOctagon className="w-4 h-4 text-amber-400" /> : <CheckCircle className="w-4 h-4 text-emerald-400" />}
-        </div>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#E8DEC8] pb-6">
         <div>
-          <div className="font-semibold text-sm">
-            Current Active Role: <span className="font-mono underline">app_{role}</span>
+          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-[#0D5C3A] mb-1">
+            <span>✦ PostgreSQL Role-Based Access Control (RBAC)</span>
           </div>
-          <p className="mt-0.5 text-slate-400 leading-relaxed">
-            {role === 'analyst'
-              ? "You are logged in as Analyst. Attempting to create a campaign below will be blocked by PostgreSQL with a 403 Forbidden 'permission denied for table dim_campaign'. Use the top-right toggle to switch to Marketing Manager."
-              : "You are logged in as Marketing Manager. You have full INSERT/UPDATE privileges. Creating a campaign below will succeed and trigger an automated audit log entry."}
+          <h1 className="text-4xl md:text-5xl font-extrabold text-[#181E24] tracking-tight font-editorial italic">
+            Campaign Ledger & Security Demo
+          </h1>
+          <p className="text-sm md:text-base text-slate-600 font-medium mt-1">
+            Test real database privileges: <code className="bg-white px-2 py-0.5 rounded border border-[#EADBCE] text-xs font-mono font-bold">app_analyst</code> (SELECT only) vs. <code className="bg-white px-2 py-0.5 rounded border border-[#EADBCE] text-xs font-mono font-bold">app_manager</code> (Full CRUD).
           </p>
         </div>
+
+        {/* Current DB Role Badge */}
+        <div className={`stamp-${role === 'manager' ? 'green' : 'red'} shadow-sm text-xs`}>
+          {role === 'manager' ? 'MANAGER (READ/WRITE ACTIVE)' : 'ANALYST (READ-ONLY ACTIVE)'}
+        </div>
       </div>
 
-      {/* Campaign Creation Form */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-white mb-4 flex items-center space-x-2">
-          <Plus className="w-4 h-4 text-indigo-400" />
-          <span>Create New Marketing Campaign (Tests Database Write Permission)</span>
-        </h2>
+      {/* Box 1: Interactive Database Permission Tester */}
+      <div className="paper-card p-6 bg-gradient-to-r from-white to-[#FBF8F4]">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xl font-bold font-editorial italic text-slate-900">
+            Interactive Database Permission Tester
+          </h3>
+          <span className="text-[11px] font-bold text-slate-400 font-mono uppercase">
+            INSERT INTO dim_campaign
+          </span>
+        </div>
+        <p className="text-xs text-slate-500 mb-4">
+          Select target channel and insert a new campaign row as your active role ({role}).
+        </p>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-1">
-            <label className="text-xs font-medium text-slate-400">Campaign Name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Q4 Black Friday Omnichannel Blitz"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
+        <form onSubmit={handleCreateCampaign} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={newCampaignName}
+            onChange={(e) => setNewCampaignName(e.target.value)}
+            placeholder="New Campaign Name (e.g., 'Spring Clearance Sale')"
+            className="flex-1 px-4 py-2.5 bg-[#FAF7F2] border border-[#EADBCE] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0D5C3A]/20 focus:border-[#0D5C3A]"
+          />
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-400">Channel</label>
+          {/* Creation Channel Dropdown */}
+          <div className="flex items-center space-x-1.5 bg-white border border-[#EADBCE] px-3 py-1.5 rounded-xl">
+            <span className="text-[11px] text-slate-400 font-bold uppercase">Channel:</span>
             <select
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+              value={newChannel}
+              onChange={(e) => setNewChannel(e.target.value)}
+              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
             >
-              <option value="Google">Google</option>
               <option value="Meta">Meta</option>
+              <option value="Google">Google</option>
               <option value="TikTok">TikTok</option>
               <option value="Email">Email</option>
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-400">Daily Budget ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={dailyBudget}
-              onChange={(e) => setDailyBudget(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-400">CPC Target Bid ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              value={cpcBid}
-              onChange={(e) => setCpcBid(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-400">Target Distribution Network</label>
-            <input
-              type="text"
-              required
-              value={targetNetwork}
-              onChange={(e) => setTargetNetwork(e.target.value)}
-              placeholder="e.g., Instagram Reels"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="sm:col-span-2 lg:col-span-3 pt-2">
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-md shadow-indigo-600/25 transition"
-            >
-              Execute INSERT via role: app_{role}
-            </button>
-          </div>
-        </form>
-
-        {/* Live Feedback Notification */}
-        {responseMsg && (
-          <div
-            className={`mt-4 p-4 rounded-xl border text-xs ${
-              responseMsg.type === 'success'
-                ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-300'
-                : 'bg-rose-950/40 border-rose-800/40 text-rose-300'
+          <button
+            type="submit"
+            className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-md flex items-center justify-center space-x-2 transition-all ${
+              role === 'manager'
+                ? 'bg-[#0D5C3A] hover:bg-[#08422A]'
+                : 'bg-slate-800 hover:bg-slate-900'
             }`}
           >
-            <div className="font-bold text-sm mb-1">{responseMsg.title}</div>
-            <p className="leading-relaxed font-mono">{responseMsg.message}</p>
+            {role === 'manager' ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4 text-amber-400" />}
+            <span>Insert Campaign as {role}</span>
+          </button>
+        </form>
+
+        {/* Live Feedback Toast Banner */}
+        {actionStatus.type && (
+          <div className={`mt-4 p-4 rounded-xl border flex items-start space-x-3 text-xs leading-relaxed ${
+            actionStatus.type === 'success'
+              ? 'bg-[#E8F5EE] border-[#A3D9B1] text-[#0D5C3A]'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            {actionStatus.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-[#0D5C3A]" />
+            ) : (
+              <ShieldAlert className="w-5 h-5 shrink-0 text-red-600" />
+            )}
+            <div>
+              <div className="font-bold text-sm mb-0.5">{actionStatus.message}</div>
+              <div className="font-mono text-[11px] opacity-90">{actionStatus.detail}</div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Campaigns Table */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-white">Active Warehouse Campaigns</h3>
-          <button
-            onClick={fetchCampaigns}
-            className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-slate-800 text-xs text-slate-300 hover:text-white transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
-            <span>Refresh</span>
-          </button>
+      {/* Box 2: Active Campaigns Ledger with Real Channel Filter Bar */}
+      <div className="paper-card overflow-hidden">
+        <div className="p-6 border-b border-[#E8DEC8] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-bold font-editorial italic text-slate-900">
+              Active Campaigns Ledger
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Filtered database view of campaigns and bid configurations
+            </p>
+          </div>
+
+          {/* Interactive Channel Filter Bar */}
+          <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search campaigns..."
+                className="pl-8 pr-3 py-1.5 bg-[#FAF7F2] border border-[#EADBCE] rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0D5C3A]"
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center space-x-1 bg-[#FAF7F2] p-1 rounded-xl border border-[#EADBCE] text-xs font-bold text-slate-600">
+              {['ALL', 'Meta', 'Google', 'TikTok', 'Email'].map((ch) => (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => setChannelFilter(ch)}
+                  className={`px-3 py-1 rounded-lg transition-all ${
+                    channelFilter === ch
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  {ch}
+                </button>
+              ))}
+            </div>
+
+            <span className="text-xs font-mono text-slate-500 pl-2">
+              {filteredCampaigns.length} campaigns
+            </span>
+          </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-950 text-xs uppercase text-slate-400 border-b border-slate-800 font-semibold tracking-wider">
-              <tr>
-                <th className="px-5 py-3.5">Campaign Name</th>
-                <th className="px-5 py-3.5">Channel</th>
-                <th className="px-5 py-3.5">Network</th>
-                <th className="px-5 py-3.5">Target CPC</th>
-                <th className="px-5 py-3.5">Daily Budget</th>
-                <th className="px-5 py-3.5">Status</th>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#FAF7F2] text-[11px] uppercase font-bold text-slate-500 border-b border-[#E8DEC8]">
+                <th className="p-4 pl-6">Campaign Name</th>
+                <th className="p-4">Channel</th>
+                <th className="p-4">CPC Bid</th>
+                <th className="p-4">Daily Budget</th>
+                <th className="p-4">Target Network</th>
+                <th className="p-4 pr-6">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-400" />
-                    Querying PostgreSQL Campaigns...
-                  </td>
-                </tr>
-              ) : (
-                campaigns.map((c) => (
-                  <tr key={c.campaign_id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-white">{c.name}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-800 text-slate-300">
-                        {c.channel}
+            <tbody className="divide-y divide-[#EADBCE] text-xs">
+              {filteredCampaigns.length > 0 ? (
+                filteredCampaigns.map((camp) => (
+                  <tr key={camp.campaign_id} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                    <td className="p-4 pl-6 font-bold text-slate-900">
+                      {camp.name}
+                    </td>
+                    <td className="p-4">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700">
+                        {camp.channel}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-400">{c.target_network || 'Direct Email'}</td>
-                    <td className="px-5 py-3.5 font-mono text-slate-300">
-                      {c.cpc_bid ? `$${Number(c.cpc_bid).toFixed(2)}` : 'N/A'}
+                    <td className="p-4 font-mono text-slate-600">
+                      {camp.cpc_bid ? `$${Number(camp.cpc_bid).toFixed(2)}` : '—'}
                     </td>
-                    <td className="px-5 py-3.5 font-mono text-emerald-400 font-semibold">
-                      {c.daily_budget ? `$${Number(c.daily_budget).toFixed(2)}` : 'N/A'}
+                    <td className="p-4 font-mono text-slate-600">
+                      {camp.daily_budget ? `$${Number(camp.daily_budget).toFixed(2)}` : '—'}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Active
+                    <td className="p-4 text-slate-500">
+                      {camp.target_network || 'Standard Feed'}
+                    </td>
+                    <td className="p-4 pr-6">
+                      <span className="stamp-green text-[10px] py-0.5">
+                        ACTIVE
                       </span>
                     </td>
                   </tr>
                 ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                    No campaigns found matching channel "{channelFilter}".
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
