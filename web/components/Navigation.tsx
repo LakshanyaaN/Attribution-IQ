@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
 import { 
   BarChart3, 
   GitFork, 
@@ -57,19 +58,19 @@ export default function Navigation() {
   ];
 
   return (
-    <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <header className="flex items-center justify-between border-b border-border bg-background/80 backdrop-blur sticky top-0 z-50 p-4">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center space-x-3">
-          <div className="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/25">
+          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center font-bold text-white shadow-lg shadow-primary/25">
             MTA
           </div>
           <div>
             <div className="font-semibold text-white tracking-tight leading-none">
               AttributionEngine
             </div>
-            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-              PESU DBMS LEVEL 3
+            <div className="text-[10px] text-slate-400 font-mono mt-0.5 tracking-wider">
+              ENTERPRISE ANALYTICS WAREHOUSE
             </div>
           </div>
         </div>
@@ -85,7 +86,7 @@ export default function Navigation() {
                 href={item.href}
                 className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-slate-800 text-indigo-400 shadow-sm'
+                    ? 'bg-slate-800 text-primary shadow-sm'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
